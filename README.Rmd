@@ -7,15 +7,15 @@ editor_options:
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-[![Static Badge](https://img.shields.io/badge/Repo-climate--smart--usda%2Fusdm-magenta?style=flat)](https://github.com/climate-smart-usda/usdm-counties/)
-![Last Update](https://img.shields.io/github/last-commit/climate-smart-usda/usdm-counties?style=flat)
-![Repo Size](https://img.shields.io/github/repo-size/climate-smart-usda/usdm-counties?style=flat)
+[![Static Badge](https://img.shields.io/badge/Repo-native--resilience%2Fusdm--aiannh-magenta?style=flat)](https://github.com/native-resilience/usdm-aiannh/)
+![Last Update](https://img.shields.io/github/last-commit/native-resilience/usdm-aiannh?style=flat)
+![Repo Size](https://img.shields.io/github/repo-size/native-resilience/usdm-aiannh?style=flat)
 
-This repository provides weekly US Drought Monitor (USDM) data aggregated to US Census county boundaries. This dataset facilitates county-level analysis of drought conditions, supporting research, policy-making, and climate resilience planning.
+This repository provides weekly US Drought Monitor (USDM) data aggregated to US Census American Indian/Alaska Native/Native Hawaiian Area (AIANNH) boundaries. This dataset facilitates AIANNH-level analysis of drought conditions, supporting research, policy-making, and climate resilience planning.
 
-<a href="https://climate-smart-usda.github.io/usdm-counties/manifest.html" target="_blank">📂 View the US Drought Monitor county archive listing here.</a>
+<a href="https://native-resilience.github.io/usdm-aiannh/manifest.html" target="_blank">📂 View the US Drought Monitor AIANNH archive listing here.</a>
 
-The goal of this repository is to aggregate county-level US Drought Monitor data in a consistent and reproducible way, using authoritative US Census county boundaries. Given the regulatory role played by the interaction between USDM and county boundaries (e.g., [7 CFR 1416.205](https://www.ecfr.gov/current/title-7/section-1416.205), [7 CFR 759.5](https://www.ecfr.gov/current/title-7/section-759.5)), it is essential that this work be authoritative, well-documented, and available in a persistent, and findable archive established by a Federal agency. This work seeks to create a framework for such an archive, with the ultimate goal of conforming with the *Foundations for Evidence-Based Policymaking Act of 2018* ("Evidence Act", [Public Law 115–435](https://www.congress.gov/115/statute/STATUTE-132/STATUTE-132-Pg5529.pdf)), the *Geospatial Data Act of 2018* (enacted as part of [Public Law 115–254](https://www.congress.gov/115/statute/STATUTE-132/STATUTE-132-Pg3186.pdf)), and [Executive Order 14303, *Restoring Gold Standard Science*](https://www.federalregister.gov/documents/2025/05/29/2025-09802/restoring-gold-standard-science).
+The goal of this repository is to aggregate AIANNH-level US Drought Monitor data in a consistent and reproducible way, using authoritative US Census AIANNH boundaries.
 
 ---
 
@@ -38,7 +38,7 @@ The USDM weekly maps depicting drought conditions are categorized into six level
 - **D3**: Extreme Drought
 - **D4**: Exceptional Drought
 
-While USDM drought class boundaries are developed without regard to political boundaries, it is often aggregated by political boundaries to assist in decision-making and for regulatory purposes. **This repository focuses on aggregating these data to the county level, enabling more localized analysis and decision-making.**
+While USDM drought class boundaries are developed without regard to political boundaries, it is often aggregated by political boundaries to assist in decision-making and for regulatory purposes. **This repository focuses on aggregating these data to the AIANNH level, enabling more localized analysis and decision-making.**
 
 > **Note**: This archive is maintained by the Montana Climate Office, but all analytical authorship of the USDM drought maps belongs to the named USDM authors.
 
@@ -46,56 +46,54 @@ While USDM drought class boundaries are developed without regard to political bo
 
 ## 🗂 Directory Structure
 
-- `usdm-counties.R`: R script that processes and aggregates weekly USDM shapefiles to county boundaries.
-- `data/`: Directory containing processed county-level USDM data and US Census county boundary files.
+- `usdm-aiannh.R`: R script that processes and aggregates weekly USDM shapefiles to AIANNH boundaries.
+- `data/`: Directory containing processed AIANNH-level USDM data and US Census AIANNH boundary files.
 - `README.Rmd`: This README file, providing an overview and usage instructions.
+- `usdm-aiannh.parquet`: processed AIANNH-level USDM data.
+- `census-aiannh-2024.parquet`: processed AIANNH boundaries from the US CENSUS
 
 ---
 
 ## Data Sources
 
 - **USDM Polygons**: Weekly `.parquet` files from [climate-smart-usda/usdm](https://github.com/climate-smart-usda/usdm)
-- **U.S. Census County Boundaries**: Downloaded from the U.S. Census TIGER/Line archive for 2000–2024.
-- For each USDM date, the **county boundary vintage used is the most recently available TIGER/Line file as of that year**.
-- For example:
-- USDM maps from 2000 use **2000 vintage counties**
-- USDM maps from 2010 use **2000 vintage counties**
-- USDM maps from 2011 use **2010 vintage counties**
-- USDM maps from 2014 use **2013 vintage counties**
-- USDM maps from 2024 use **2023 counties** (the latest available)
+- **U.S. Census AIANNH Boundaries**: Downloaded from the U.S. Census TIGER/Line archive for 2024.
 
-All boundaries are reprojected to EPSG:4326, geometrically validated, and saved in `.parquet` format.
+All boundaries are reprojected to EPSG:4326, geospatially validated, and saved in `.parquet` format.
 
 ## Processing Pipeline
 
-The analysis pipeline is fully contained in [`usdm-counties.R`](usdm-counties.R) and proceeds as follows:
+The analysis pipeline is fully contained in [`usdm-aiannh.R`](usdm-aiannh.R) and proceeds as follows:
 
 1. **Install and load dependencies**:
 - Uses `pak::pak()` to ensure fresh, source-built installs of critical geospatial packages.
 
-2. **Download county boundary shapefiles** for each year (2000–2024) directly from US Census and store in `data/census/raw`.
+2. **Download AIANNH boundary shapefiles** for 2024 directly from US Census and store in `data/census`.
 
-3. **Convert each shapefile to (Geo)Parquet**:
-- Extract and clean up attributes (`STATEFP`, `COUNTYFP`, `NAME`, `NAMELSAD`)
+3. **Convert the shapefile to (Geo)Parquet**:
+- Extract and clean up attributes
 - Encode using UTF-8, fix geometries, cast to MULTIPOLYGON, and calculate area
-- Output is saved to `data/census/parquet/{year}-counties.parquet`
+- Output is saved to `census-aiannh-2024.parquet`
 
-4. **Match USDM dates with appropriate county vintage**:
-- Each USDM date is paired with the most recent county boundary file available for that year
+4. **Match USDM dates with appropriate AIANNH vintage**:
+- Each USDM date is paired with the most recent AIANNH boundary file available for that year
 - The full list of USDM dates is generated starting from `2000-01-04`, up to two days before the current date
 
 5. **Download and intersect**:
 - For each weekly USDM `.parquet` file:
-- Read county and drought geometries
+- Read AIANNH and drought geometries
 - Perform spatial intersection
-- Calculate the percent of each county area affected by each drought class
+- Calculate the percent of each AIANNH area affected by each drought class
 - Tabular output is saved to `data/usdm/USDM_{YYYY-MM-DD}.parquet`
 
 6. **Output Structure**:
 Each output file is a non-spatial `.parquet` file with the following fields:
-- `STATEFP`, `State`, `COUNTYFP`, `County`, `CountyLSAD`
-- `usdm_class`: One of `None`, `D0`, `D1`, `D2`, `D3`, `D4`
-- `percent`: Proportion of the county in this drought class (as a decimal between 0 and 1)
+- `GNIS`, `Name`, `NameLSAD`, `LSAD`, `CountyLSAD`
+- `Date`: Date of the USDM map (weekly, on Tuesdays)
+- `USDM Class`: One of `D0`, `D1`, `D2`, `D3`, `D4`
+- `Total Area (m^2)`: Total area of the AIANNH
+- `USDM Class Area (m^2)`: Area of the AIANNH in the USDM drought class
+- `USDM Class Area (%)`: Percent of the AIANNH in this drought class (between 0 and 100)
 
 ---
 
@@ -139,46 +137,42 @@ date <-
   stringr::str_extract("\\d{4}-\\d{2}-\\d{2}") |>
   lubridate::as_date()
 
+states <-
+  tigris::states(cb = TRUE, 
+                 resolution = "5m",
+                 progress_bar = FALSE) |>
+  dplyr::filter(!(STUSPS %in% c("MP", "VI", "AS", "GU"))) |>
+  sf::st_cast("POLYGON", warn = FALSE, do_split = TRUE) |>
+  tigris::shift_geometry()
+
 # Get the highest (worst) drought class in each county
 usdm <-
   latest |>
   arrow::read_parquet() |>
-  dplyr::group_by(STATEFP, COUNTYFP) |>
-  dplyr::filter(usdm_class == max(usdm_class))
+  dplyr::group_by(GNIS) |>
+  dplyr::filter(`USDM Class` == max(`USDM Class`))
 
-counties <- 
-  tigris::counties(cb = TRUE, 
-                   resolution = "5m",
-                   progress_bar = FALSE) |>
-  dplyr::filter(
-    !(STATE_NAME %in% c("Guam", 
-                        "American Samoa", 
-                        "United States Virgin Islands", 
-                        "Commonwealth of the Northern Mariana Islands"))
-  ) |>
+aiannh <- 
+  tigris::native_areas(cb = TRUE, 
+                       progress_bar = FALSE) |>
   sf::st_cast("POLYGON", warn = FALSE, do_split = TRUE) |>
   tigris::shift_geometry()
 
-usdm_counties <-
+usdm_aiannh <-
   usdm |>
-  dplyr::left_join(counties) |>
+  dplyr::left_join(aiannh) |>
   sf::st_as_sf()
 
 # Plot the map
-ggplot(counties) +
-  geom_sf(data = sf::st_union(counties),
+ggplot(states) +
+  geom_sf(data = sf::st_union(states),
           fill = "grey80",
           color = NA) +
-  geom_sf(data = usdm_counties,
-          aes(fill = usdm_class), 
-          color = NA) +
-  geom_sf(data = rmapshaper::ms_innerlines(counties),
-          fill = NA,
+  geom_sf(data = usdm_aiannh,
+          aes(fill = `USDM Class`), 
           color = "white",
-          linewidth = 0.1) +
-  geom_sf(data = counties |>
-            dplyr::group_by(STATEFP) |>
-            dplyr::summarise() |>
+          linewidth = 0.01) +
+  geom_sf(data = states |>
             rmapshaper::ms_innerlines(),
           fill = NA,
           color = "white",
@@ -202,7 +196,7 @@ ggplot(counties) +
 
 **Citation format** (suggested):
 
-> US Drought Monitor authors. *US Drought Monitor Weekly Maps*. Data curated and archived by R. Kyle Bocinsky, Montana Climate Office. Accessed via GitHub archive, YYYY. https://climate-smart-usda.github.io/usdm/
+> Native Resilience Project. *US Drought Monitor weekly maps aggregated to US Census American Indian/Alaska Native/Native Hawaiian Area (AIANNH) boundaries*. Data curated and archived by R. Kyle Bocinsky, Montana Climate Office. Accessed via GitHub archive, YYYY. https://native-resilience.github.io/usdm-aiannh/
 
 **Acknowledgments**:
 
@@ -228,8 +222,8 @@ This dataset is archived for research and educational use only. The National Dro
 
 This project is part of:
 
-**[*Enhancing Climate-smart Disaster Relief in FSA Programs*](https://www.ars.usda.gov/research/project/?accnNo=444612)**  
-Supported by USDA OCE/OEEP and USDA Climate Hubs  
+**[*Native Resilience Project: Sustaining Water Resources and Agriculture in a Changing World*](https://www.ars.usda.gov/research/project/?accnNo=444612)**  
+Supported by USDA NIFA and USDA Climate Hubs under grant number 2022-68015-36357
 Prepared by the [Montana Climate Office](https://climate.umt.edu)
 
 ---
