@@ -6,13 +6,13 @@ on:
     - cron: '30 13 * * 4'  # 13:30 UTC = 7:30 AM MT (DST), every Thursday
 
 name: update
-run-name: Update the USDM County Aggregation Archive
+run-name: Update the USDM AIANNH Aggregation Archive
 
 permissions: write-all
 
 jobs:
   update-usdm-counties:
-    name: update-usdm-counties
+    name: update-usdm-aiannh
     runs-on: macos-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -30,7 +30,7 @@ jobs:
 
       - name: run
         run: |
-          Rscript usdm-counties.R
+          Rscript usdm-aiannh.R
   
       - name: commit
         run: |
