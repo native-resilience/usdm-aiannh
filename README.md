@@ -75,7 +75,7 @@ localized analysis and decision-making.**
 ## Data Sources
 
 - **USDM Polygons**: Weekly `.parquet` files from
-  [climate-smart-usda/usdm](https://github.com/climate-smart-usda/usdm)
+  [sustainable-fsa/usdm](https://github.com/sustainable-fsa/usdm)
 - **U.S. Census AIANNH Boundaries**: Downloaded from the U.S. Census
   TIGER/Line archive for 2024.
 
@@ -166,7 +166,7 @@ latest <-
   )$path |>
   stringr::str_subset("parquet") |>
   max()
-# e.g., [1] "data/usdm/USDM_2025-05-27.parquet"
+# e.g., [1] "data/usdm-aiannh/USDM_2025-05-27.parquet"
 
 date <-
   latest |>
