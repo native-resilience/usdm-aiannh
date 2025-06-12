@@ -1,8 +1,8 @@
 title: USDM Native Area Aggregations
 description: Weekly US Drought Monitor (USDM) data aggregated to US Census native area boundaries
 author: R. Kyle Bocinsky
-url: "https://native-resilience.github.io/usdm-native-areas/"  # Your GitHub Pages URL
-baseurl: "/usdm-native-areas"
+url: "https://native-resilience.github.io/usdm-aiannh/"  # Your GitHub Pages URL
+baseurl: "/usdm-aiannh"
 
 remote_theme: jekyll/minima
 plugins:
