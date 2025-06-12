@@ -118,7 +118,7 @@ out <-
   tibble::tibble(Date = .) %>%
   dplyr::mutate(
     USDM = 
-      file.path("https://strong-fsa.github.io/usdm", 
+      file.path("https://sustainable-fsa.github.io/usdm", 
                 "usdm", "data", "parquet", 
                 paste0("USDM_",Date,".parquet")),
     outfile = file.path("data", "usdm-aiannh", 
