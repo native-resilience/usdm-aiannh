@@ -186,27 +186,24 @@ usdm <-
   latest |>
   arrow::read_parquet() |>
   dplyr::group_by(GNIS) |>
-  dplyr::filter(`USDM Class` == max(`USDM Class`))
+  dplyr::filter(`USDM Class` == max(`USDM Class`)) |>
+  dplyr::ungroup()
 
 aiannh <- 
   tigris::native_areas(cb = TRUE, 
                        progress_bar = FALSE) |>
   sf::st_cast("POLYGON", warn = FALSE, do_split = TRUE) |>
-  tigris::shift_geometry()
+  tigris::shift_geometry() |>
+  dplyr::group_by(AIANNHNS) |>
+  dplyr::summarise() |>
+  sf::st_cast("MULTIPOLYGON")
 
 usdm_aiannh <-
   usdm |>
-  dplyr::left_join(aiannh) |>
+  dplyr::left_join(aiannh,
+                   by = c("GNIS" = "AIANNHNS")) |>
   sf::st_as_sf()
-```
 
-    ## Warning in dplyr::left_join(usdm, aiannh): Detected an unexpected many-to-many relationship between `x` and `y`.
-    ## ℹ Row 1 of `x` matches multiple rows in `y`.
-    ## ℹ Row 4 of `y` matches multiple rows in `x`.
-    ## ℹ If a many-to-many relationship is expected, set `relationship =
-    ##   "many-to-many"` to silence this warning.
-
-``` r
 # Plot the map
 ggplot(states) +
   geom_sf(data = sf::st_union(states),
