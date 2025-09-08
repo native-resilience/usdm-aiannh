@@ -150,17 +150,22 @@ usdm <-
   latest |>
   arrow::read_parquet() |>
   dplyr::group_by(GNIS) |>
-  dplyr::filter(`USDM Class` == max(`USDM Class`))
+  dplyr::filter(`USDM Class` == max(`USDM Class`)) |>
+  dplyr::ungroup()
 
 aiannh <- 
   tigris::native_areas(cb = TRUE, 
                        progress_bar = FALSE) |>
   sf::st_cast("POLYGON", warn = FALSE, do_split = TRUE) |>
-  tigris::shift_geometry()
+  tigris::shift_geometry() |>
+  dplyr::group_by(AIANNHNS) |>
+  dplyr::summarise() |>
+  sf::st_cast("MULTIPOLYGON")
 
 usdm_aiannh <-
   usdm |>
-  dplyr::left_join(aiannh) |>
+  dplyr::left_join(aiannh,
+                   by = c("GNIS" = "AIANNHNS")) |>
   sf::st_as_sf()
 
 # Plot the map
