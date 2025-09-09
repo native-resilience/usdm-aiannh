@@ -177,6 +177,10 @@ ggplot(states) +
           aes(fill = `USDM Class`), 
           color = "white",
           linewidth = 0.01) +
+    geom_sf(data = rmapshaper::ms_innerlines(usdm_aiannh),
+          fill = NA,
+          color = "white",
+          linewidth = 0.1) +
   geom_sf(data = states |>
             rmapshaper::ms_innerlines(),
           fill = NA,
