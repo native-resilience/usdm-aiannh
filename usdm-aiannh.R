@@ -11,12 +11,14 @@ install.packages("pak",
 
 pak::pak(
   c(
-    "arrow?source",
+    "arrow",
     "sf?source",
     "curl",
     "tidyverse",
     "tigris",
-    "rmapshaper"
+    "rmapshaper",
+    "furrr",
+    "future.mirai"
   )
 )
 
@@ -24,6 +26,8 @@ library(magrittr)
 library(tidyverse)
 library(sf)
 library(arrow)
+library(furrr)
+library(future.mirai)
 
 sf::sf_use_s2(TRUE)
 
@@ -80,8 +84,8 @@ if(
                      is_coverage = TRUE) %>%
     sf::st_cast("MULTIPOLYGON", warn = FALSE) %>%
     sf::st_transform("EPSG:4326") %>%
-    dplyr::mutate(`Total Area (m^2)` = sf::st_area(geometry)) %>%
-    dplyr::select(GNIS, Name, NameLSAD, LSAD, `Total Area (m^2)`) %>%
+    dplyr::mutate(Area = sf::st_area(geometry)) %>%
+    dplyr::select(GNIS, Name, NameLSAD, LSAD, Area) %>%
     sf::write_sf(
       file.path("census-aiannh-2024.parquet"),
       driver = "Parquet",
@@ -98,78 +102,94 @@ aiannh <-
   )
 
 usdm_get_dates <-
-  function(as_of = lubridate::today(tzone = "America/Denver")){
+  function(as_of = lubridate::today()){
     as_of %<>%
       lubridate::as_date()
     
     usdm_dates <-
-      seq(lubridate::as_date("20000104"),
-          lubridate::today(tzone = "America/Denver"), "1 week")
+      seq(lubridate::as_date("20000104"), lubridate::today(), "1 week")
     
     usdm_dates <- usdm_dates[(as_of - usdm_dates) >= 2]
     
     return(usdm_dates)
   }
 
-# library(furrr)
-# future::plan(future.callr::callr)
+plan(mirai_multisession)
 
-out <-
-  usdm_get_dates() %>%
+usdm_get_dates() %>%
   tibble::tibble(Date = .) %>%
   dplyr::mutate(
+    Year = lubridate::year(Date),
     USDM = 
-      file.path("https://sustainable-fsa.github.io/usdm", 
-                "usdm", "data", "parquet", 
-                paste0("USDM_",Date,".parquet")),
+      file.path(
+        "https://sustainable-fsa.github.io/usdm",
+        # "../usdm",
+        "usdm", "data", "parquet", 
+        paste0("USDM_",Date,".parquet")),
     outfile = file.path("data", "usdm-aiannh", 
                         paste0("USDM_",Date,".parquet"))
   ) %>%
-  dplyr::mutate(
-    # `USDM AIANNH` = furrr::future_pmap_chr(
-    `USDM AIANNH` = purrr::pmap_chr(
-      .l = .,
-      .f = function(USDM,
-                    outfile, 
-                    ...){
+  dplyr::filter(!file.exists(outfile)) %>%
+  furrr::future_pwalk(
+    .f = function(USDM,
+                  outfile, 
+                  ...){
+      
+      cat(USDM)
+      
+      if(!file.exists(outfile)){
+        aiannh <-
+          aiannh %>%
+          sf::`st_agr<-`("constant")
         
-        if(!file.exists(outfile))
-          
+        usdm <-
+          USDM %>%
+          sf::read_sf() %>%
+          sf::st_transform(sf::st_crs(aiannh)) %>%
+          sf::`st_agr<-`("constant")
+        
+        dplyr::bind_rows(
           sf::st_intersection(
-            aiannh %>%
-              sf::`st_agr<-`("constant"),
-            USDM %>%
-              sf::read_sf() %>%
-              sf::`st_agr<-`("constant")
-          ) %>%
-          dplyr::rename(`Total Area (m^2)` = `Total.Area..m.2.`) %>%
+            aiannh,
+            usdm
+          ),
+          sf::st_difference(
+            aiannh,
+            usdm %>%
+              sf::st_union()
+          )
+        ) %>%
+          tidyr::fill(date) %>%
           sf::st_cast("MULTIPOLYGON") %>%
           sf::st_make_valid() %>%
-          dplyr::arrange(GNIS, Name, NameLSAD, LSAD, date, usdm_class) %>%
+          dplyr::arrange(Name, LSAD, date, usdm_class) %>%
           dplyr::mutate(
-            `USDM Class Area (m^2)` = units::drop_units(sf::st_area(geometry)),
-            `USDM Class Area (%)` = 100 * `USDM Class Area (m^2)` / `Total Area (m^2)`
+            usdm_date = date,
+            usdm_class = 
+              tidyr::replace_na(usdm_class, "None") %>%
+              factor(levels = c("None", paste0("D", 0:4)),
+                     ordered = TRUE),
+            usdm_percent = units::drop_units(sf::st_area(geometry) / Area)
           ) %>%
-          sf::st_drop_geometry() %>%
           dplyr::select(GNIS, Name, NameLSAD, LSAD, 
-                        Date = date, `USDM Class` = usdm_class, 
-                        `Total Area (m^2)`, `USDM Class Area (m^2)`,
-                        `USDM Class Area (%)`) %>%
-          dplyr::arrange(GNIS, Name, NameLSAD, `USDM Class`) %>%
+                        usdm_date, usdm_class, usdm_percent) %>%
+          dplyr::arrange(Name, LSAD, usdm_class) %>%
+          sf::st_drop_geometry() %>%
           arrow::write_parquet(sink = outfile,
                                version = "latest",
                                compression = "zstd",
                                use_dictionary = TRUE)
-        
-        return(outfile)
       }
-    )
+    }
   )
 
-# future::plan(sequential)
+plan(sequential)
 
-arrow::open_dataset("data/usdm-aiannh/") %>%
-  dplyr::collect() %>%
+list.files("data/usdm-aiannh",
+           recursive = TRUE,
+           full.names = TRUE) %>%
+  purrr::map_dfr(arrow::read_parquet) %>%
+  dplyr::arrange(Name, LSAD, usdm_date, usdm_class) %>%
   arrow::write_parquet(sink = "usdm-aiannh.parquet",
                        version = "latest",
                        compression = "zstd",

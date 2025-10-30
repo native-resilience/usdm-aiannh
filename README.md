@@ -186,7 +186,7 @@ usdm <-
   latest |>
   arrow::read_parquet() |>
   dplyr::group_by(GNIS) |>
-  dplyr::filter(`USDM Class` == max(`USDM Class`)) |>
+  dplyr::filter(usdm_class == max(usdm_class)) |>
   dplyr::ungroup()
 
 aiannh <- 
@@ -210,10 +210,10 @@ ggplot(states) +
           fill = "grey80",
           color = NA) +
   geom_sf(data = usdm_aiannh,
-          aes(fill = `USDM Class`), 
+          aes(fill = usdm_class), 
           color = "white",
           linewidth = 0.01) +
-    geom_sf(data = rmapshaper::ms_innerlines(usdm_aiannh),
+  geom_sf(data = rmapshaper::ms_innerlines(usdm_aiannh),
           fill = NA,
           color = "white",
           linewidth = 0.1) +
@@ -223,7 +223,8 @@ ggplot(states) +
           color = "white",
           linewidth = 0.2) +
   scale_fill_manual(
-    values = c("#ffff00",
+    values = c("grey80",
+               "#ffff00",
                "#fcd37f",
                "#ffaa00",
                "#e60000",
