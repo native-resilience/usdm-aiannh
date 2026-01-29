@@ -3,7 +3,7 @@
 on:
   push:
   schedule:
-    - cron: '30 13 * * 4'  # 13:30 UTC = 7:30 AM MT (DST), every Thursday
+    - cron: '30 14 * * 4'  # 13:30 UTC = 7:30 AM MT (DST), every Thursday
 
 name: update
 run-name: Update the USDM AIANNH Aggregation Archive
@@ -21,9 +21,9 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
       - name: install
         run: |
-          brew update
-          brew upgrade
-          brew install apache-arrow udunits gdal
+          # brew update
+          # brew upgrade
+          # brew install apache-arrow udunits gdal
           brew install --cask r
           brew cleanup --scrub
           rm -rf "$(brew --cache)"

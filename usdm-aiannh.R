@@ -12,7 +12,7 @@ install.packages("pak",
 pak::pak(
   c(
     "arrow",
-    "sf?source",
+    "sf",
     "curl",
     "tidyverse",
     "tigris",
@@ -89,7 +89,7 @@ if(
     sf::write_sf(
       file.path("census-aiannh-2024.parquet"),
       driver = "Parquet",
-      layer_options = c("COMPRESSION=BROTLI",
+      layer_options = c("COMPRESSION=ZSTD",
                         "GEOMETRY_ENCODING=GEOARROW",
                         "WRITE_COVERING_BBOX=NO"),
     )
