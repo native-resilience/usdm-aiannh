@@ -21,9 +21,11 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
       - name: install
         run: |
-          # brew update
-          # brew upgrade
-          # brew install apache-arrow udunits gdal
+          brew update
+          brew upgrade
+          brew cleanup --scrub
+          rm -rf "$(brew --cache)"
+          brew install apache-arrow udunits gdal
           brew install --cask r
           brew cleanup --scrub
           rm -rf "$(brew --cache)"

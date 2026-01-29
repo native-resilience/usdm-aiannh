@@ -13,8 +13,8 @@ options("pkg.cran_mirror" = "https://mac.r-project.org")
 
 pak::pak(
   c(
-    "arrow",
-    "sf",
+    "arrow?source",
+    "sf?source",
     "curl",
     "tidyverse",
     "tigris",
@@ -53,10 +53,10 @@ states <-
 
 if(
   !file.exists(
-    file.path("census-aiannh-2024.parquet")
+    file.path("census-aiannh-2025.parquet")
   )
 ){
-  "https://www2.census.gov/geo/tiger/TIGER2024/AIANNH/tl_2024_us_aiannh.zip" %>%
+  "https://www2.census.gov/geo/tiger/TIGER2025/AIANNH/tl_2025_us_aiannh.zip" %>%
     curl::multi_download(urls = .,
                          destfiles = 
                            file.path("data","census",basename(.)),
@@ -89,7 +89,7 @@ if(
     dplyr::mutate(Area = sf::st_area(geometry)) %>%
     dplyr::select(GNIS, Name, NameLSAD, LSAD, Area) %>%
     sf::write_sf(
-      file.path("census-aiannh-2024.parquet"),
+      file.path("census-aiannh-2025.parquet"),
       driver = "Parquet",
       layer_options = c("COMPRESSION=ZSTD",
                         "GEOMETRY_ENCODING=GEOARROW",
@@ -99,7 +99,7 @@ if(
 
 aiannh <-
   sf::read_sf(
-    file.path("census-aiannh-2024.parquet"),
+    file.path("census-aiannh-2025.parquet"),
     optional = TRUE
   )
 
