@@ -1,44 +1,41 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
-on:
-  push:
-  schedule:
-    - cron: '30 14 * * 4'  # 13:30 UTC = 7:30 AM MT (DST), every Thursday
-
+# Workflow modeled on sustainable-fsa/usdm-counties (conda-forge geospatial setup).
 name: update
 run-name: Update the USDM AIANNH Aggregation Archive
 
-permissions: write-all
+on:
+  schedule:
+    - cron: '30 14 * * 4'  # 14:30 UTC = 7:30/8:30 AM MT, every Thursday
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['**.R', '**.Rmd', '.github/workflows/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: archive-${{ github.repository }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash -l {0}
 
 jobs:
-  update-usdm-counties:
+  update:
     name: update-usdm-aiannh
     runs-on: macos-latest
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 350
     steps:
-      - uses: actions/checkout@v6
-      - uses: r-lib/actions/setup-pandoc@v2
-      - name: install
-        run: |
-          brew update
-          brew upgrade
-          brew cleanup --scrub
-          rm -rf "$(brew --cache)"
-          brew install apache-arrow udunits gdal
-          brew install --cask r
-          brew cleanup --scrub
-          rm -rf "$(brew --cache)"
+      - uses: mt-climate-office/actions/setup-geospatial@v1
 
-      - name: run
-        run: |
-          Rscript usdm-aiannh.R
-  
-      - name: commit
+      - name: Update archive
+        run: Rscript usdm-aiannh.R
+
+      - name: Commit and push
         run: |
           git config --local user.name "$GITHUB_ACTOR"
           git config --local user.email "$GITHUB_ACTOR@users.noreply.github.com"
           git add .
           git commit --allow-empty -m 'weekly update'
           git push
-          

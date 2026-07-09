@@ -1,28 +1,28 @@
 # update.packages(repos = "https://cran.rstudio.com/",
 #                 ask = FALSE)
 
-install.packages("pak",
-                 repos = "https://mac.r-project.org")
-
-options("pkg.cran_mirror" = "https://mac.r-project.org")
-
-# installed.packages() |>
-#   rownames() |>
-#   pak::pkg_install(upgrade = TRUE,
-#                  ask = FALSE)
-
-pak::pak(
-  c(
-    "arrow?source",
-    "sf?source",
-    "curl",
-    "tidyverse",
-    "tigris",
-    "rmapshaper",
-    "furrr",
-    "future.mirai"
-  )
-)
+# install.packages("pak",
+#                  repos = "https://mac.r-project.org")
+#
+# options("pkg.cran_mirror" = "https://mac.r-project.org")
+#
+# # installed.packages() |>
+# #   rownames() |>
+# #   pak::pkg_install(upgrade = TRUE,
+# #                  ask = FALSE)
+#
+# pak::pak(
+#   c(
+#     "arrow?source",
+#     "sf?source",
+#     "curl",
+#     "tidyverse",
+#     "tigris",
+#     "rmapshaper",
+#     "furrr",
+#     "future.mirai"
+#   )
+# )
 
 library(magrittr)
 library(tidyverse)
@@ -229,5 +229,7 @@ generate_tree_flat <- function(
 # Generate the flat index
 generate_tree_flat()
 
-# Knit the readme
+# Knit the readme (rmarkdown reaches the conda env only transitively; guard it)
+if (!requireNamespace("rmarkdown", quietly = TRUE))
+  install.packages("rmarkdown", repos = "https://cloud.r-project.org")
 rmarkdown::render("README.Rmd")
