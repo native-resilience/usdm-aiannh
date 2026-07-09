@@ -281,7 +281,7 @@ This project is part of:
 
 **[*Native Resilience Project: Sustaining Water Resources and
 Agriculture in a Changing
-World*](https://www.ars.usda.gov/research/project/?accnNo=444612)**  
+World*](https://www.ars.usda.gov/research/project/?accnNo=444612)**\
 Supported by USDA NIFA and USDA Climate Hubs under grant number
 2022-68015-36357 Prepared by the [Montana Climate
 Office](https://climate.umt.edu)
@@ -290,8 +290,8 @@ Office](https://climate.umt.edu)
 
 ## 📬 Contact
 
-**R. Kyle Bocinsky**  
-Director of Climate Extension  
-Montana Climate Office  
-📧 <kyle.bocinsky@umontana.edu>  
+**R. Kyle Bocinsky**\
+Director of Climate Extension\
+Montana Climate Office\
+📧 <kyle.bocinsky@umontana.edu>\
 🌐 <https://climate.umt.edu>
