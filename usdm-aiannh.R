@@ -122,11 +122,10 @@ usdm_get_dates() %>%
   tibble::tibble(Date = .) %>%
   dplyr::mutate(
     Year = lubridate::year(Date),
-    USDM = 
+    USDM =
       file.path(
-        "https://sustainable-fsa.github.io/usdm",
-        # "../usdm",
-        "usdm", "data", "parquet", 
+        "https://data.sustainable-fsa.com/usdm",
+        "data", "parquet",
         paste0("USDM_",Date,".parquet")),
     outfile = file.path("data", "usdm-aiannh", 
                         paste0("USDM_",Date,".parquet"))
