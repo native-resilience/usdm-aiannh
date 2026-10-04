@@ -31,6 +31,26 @@ library(arrow)
 library(furrr)
 library(future.mirai)
 
+## ---- S3 archive ------------------------------------------------------
+## The archive of record is s3://native-resilience/usdm-aiannh/, served at
+## https://data.native-resilience.com/usdm-aiannh/. Prior state is pulled down
+## first so the !file.exists() guards below only build new weeks.
+## PUBLISH=0 builds locally without uploading.
+source("R/s3-archive.R")
+s3_preflight()
+s3_bucket_name <- Sys.getenv("S3_BUCKET", unset = "native-resilience")
+s3_prefix      <- Sys.getenv("S3_PREFIX", unset = "usdm-aiannh")
+publish        <- Sys.getenv("PUBLISH", unset = "1") != "0"
+
+s3_pull(s3_bucket_name, paste0(s3_prefix, "/data"), "data")
+if (!file.exists("census-aiannh-2025.parquet") &&
+    "census-aiannh-2025.parquet" %in%
+    basename(s3_list_keys(s3_bucket_name, s3_prefix)$Key))
+  s3_run(c("s3", "cp",
+           paste0("s3://", s3_bucket_name, "/", s3_prefix,
+                  "/census-aiannh-2025.parquet"),
+           "census-aiannh-2025.parquet"))
+
 sf::sf_use_s2(TRUE)
 
 dir.create(
@@ -229,7 +249,40 @@ generate_tree_flat <- function(
 # Generate the flat index
 generate_tree_flat()
 
-# Knit the readme (rmarkdown reaches the conda env only transitively; guard it)
+## ---- Publish to S3 ---------------------------------------------------
+## Weekly files are immutable, so data/ is pushed append-only; the combined
+## table, boundaries and manifests are rewritten each run and invalidated.
+if (publish) {
+  s3_push(s3_bucket_name, paste0(s3_prefix, "/data"), "data", delete = FALSE)
+  s3_put(s3_bucket_name, paste0(s3_prefix, "/usdm-aiannh.parquet"),
+         "usdm-aiannh.parquet",
+         content_type = "application/vnd.apache.parquet",
+         cache_control = "max-age=3600")
+  s3_put(s3_bucket_name, paste0(s3_prefix, "/census-aiannh-2025.parquet"),
+         "census-aiannh-2025.parquet",
+         content_type = "application/vnd.apache.parquet",
+         cache_control = "max-age=3600")
+  s3_put(s3_bucket_name, paste0(s3_prefix, "/manifest.json"), "manifest.json",
+         content_type = "application/json",
+         cache_control = "max-age=3600")
+  s3_verify(s3_bucket_name, paste0(s3_prefix, "/data"), "data",
+            allow_extra = character(0), expect_exact = FALSE)
+  s3_write_manifest(s3_bucket_name, s3_prefix)
+  cf_invalidate(paste0("/", s3_prefix, c("/usdm-aiannh.parquet",
+                                         "/census-aiannh-2025.parquet",
+                                         "/manifest.json",
+                                         "/_manifest.txt")))
+  cf_wait_manifest(
+    paste0(Sys.getenv("CLOUDFRONT_BASE",
+                      unset = "https://data.native-resilience.com"),
+           "/", s3_prefix, "/manifest.json"),
+    "manifest.json")
+}
+
+# ---- Render the README ----
+# Regenerates README.md and the example map from the published archive; the
+# workflow commits these (and only these) back to git.
+# (rmarkdown reaches the conda env only transitively; guard it)
 if (!requireNamespace("rmarkdown", quietly = TRUE))
   install.packages("rmarkdown", repos = "https://cloud.r-project.org")
 rmarkdown::render("README.Rmd")

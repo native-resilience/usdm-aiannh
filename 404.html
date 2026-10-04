@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Moved to data.native-resilience.com</title>
+<script>
+  // The usdm-aiannh archive of record moved to S3 (2026-10). Old Pages data
+  // paths forward to the same path on the data domain; the old manifest.html
+  // file browser forwards to the archive listing.
+  var p = location.pathname.replace(/^\/usdm-aiannh\//, "/usdm-aiannh/");
+  if (/\/manifest\.html$/.test(p)) p = "/usdm-aiannh/";
+  location.replace("https://data.native-resilience.com" + p + location.search);
+</script>
+</head>
+<body>
+This archive moved to <a href="https://data.native-resilience.com/usdm-aiannh/">data.native-resilience.com/usdm-aiannh/</a>.
+</body>
+</html>

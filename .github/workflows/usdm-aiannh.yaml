@@ -1,20 +1,30 @@
-# Workflow modeled on sustainable-fsa/usdm-counties (conda-forge geospatial setup).
+# Archive-update workflow, modeled on sustainable-fsa/usdm-counties (S3 archive
+# + conda-forge geospatial setup). Data publish to s3://native-resilience/
+# usdm-aiannh/ (https://data.native-resilience.com/usdm-aiannh/); only the
+# rendered README comes back to git.
 name: update
-run-name: Update the USDM AIANNH Aggregation Archive
+run-name: Update the usdm-aiannh archive → S3
 
 on:
   schedule:
     - cron: '30 14 * * 4'  # 14:30 UTC = 7:30/8:30 AM MT, every Thursday
   workflow_dispatch:
+    inputs:
+      force:
+        description: >-
+          Run even when the freshness precheck sees nothing new upstream.
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: ['**.R', '**.Rmd', '.github/workflows/**']
 
 permissions:
-  contents: write
+  id-token: write
+  contents: write  # commit-back of rendered README
 
 concurrency:
-  group: archive-${{ github.repository }}
+  group: s3-archive-${{ github.repository }}
   cancel-in-progress: false
 
 defaults:
@@ -22,20 +32,101 @@ defaults:
     shell: bash -l {0}
 
 jobs:
+  # Skip the macOS runner when there is nothing to do. Fails OPEN: it skips
+  # only on a definite answer (a 404 upstream, or the week already present
+  # here); a probe that itself fails leaves `proceed` true.
+  precheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.gate.outputs.proceed }}
+    steps:
+      - id: gate
+        env:
+          UPSTREAM: https://data.sustainable-fsa.com/usdm/data/parquet
+          MINE: https://data.native-resilience.com/usdm-aiannh/data/usdm-aiannh
+          EVENT: ${{ github.event_name }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -uo pipefail
+
+          if [ "$EVENT" = push ] || [ "$FORCE" = true ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Newest USDM Tuesday at least two days old — mirrors usdm_get_dates().
+          wk=
+          for i in $(seq 2 15); do
+            d=$(date -u -d "$i days ago" +%F)
+            if [ "$(date -u -d "$d" +%u)" = 2 ]; then wk="$d"; break; fi
+          done
+
+          probe() {
+            curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 3 \
+              -I "$1" 2>/dev/null | tail -c 3
+          }
+
+          up=$(probe "$UPSTREAM/USDM_$wk.parquet")
+          mine=$(probe "$MINE/USDM_$wk.parquet")
+          echo "week=$wk upstream=$up mine=$mine"
+
+          lvl=notice
+          if [ "$EVENT" = workflow_dispatch ]; then lvl=warning; fi
+
+          if [ "$up" = 404 ]; then
+            echo "::${lvl}::Upstream usdm parquet for $wk is not published yet; skipping."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          elif [ "$up" = 200 ] && [ "$mine" = 200 ]; then
+            echo "::notice::$wk is already present in this archive; skipping."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   update:
+    needs: precheck
+    if: always() && needs.precheck.outputs.proceed != 'false'
     name: update-usdm-aiannh
     runs-on: macos-latest
     timeout-minutes: 350
+    env:
+      S3_BUCKET: native-resilience
+      S3_PREFIX: usdm-aiannh
+      AWS_REGION: us-west-2
+      CLOUDFRONT_DISTRIBUTION_ID: E2O1CP3LOBQEN8
+      CLOUDFRONT_BASE: https://data.native-resilience.com
     steps:
       - uses: mt-climate-office/actions/setup-geospatial@v1
+
+      - name: Configure AWS credentials (GitHub OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 14400
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
 
       - name: Update archive
         run: Rscript usdm-aiannh.R
 
-      - name: Commit and push
+      # Commit the freshly rendered README (and only it) back to git. No-op
+      # runs skip the commit; PNG byte-noise alone never triggers one.
+      - name: Commit refreshed README
         run: |
-          git config --local user.name "$GITHUB_ACTOR"
-          git config --local user.email "$GITHUB_ACTOR@users.noreply.github.com"
-          git add .
-          git commit --allow-empty -m 'weekly update'
+          if git diff --quiet -- README.md; then
+            echo "README unchanged; skipping commit."
+            exit 0
+          fi
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md example-1.png
+          git commit -m 'Weekly README render'
+          if ! git pull --rebase --autostash origin main; then
+            git rebase --abort || true
+            echo "::notice::README render superseded by a concurrent run; skipping commit."
+            exit 0
+          fi
           git push

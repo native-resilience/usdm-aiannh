@@ -13,7 +13,7 @@ editor_options:
 
 This repository provides weekly US Drought Monitor (USDM) data aggregated to US Census American Indian/Alaska Native/Native Hawaiian Area (AIANNH) boundaries. This dataset facilitates AIANNH-level analysis of drought conditions, supporting research, policy-making, and climate resilience planning.
 
-<a href="https://native-resilience.github.io/usdm-aiannh/manifest.html" target="_blank">📂 View the US Drought Monitor AIANNH archive listing here.</a>
+<a href="https://data.native-resilience.com/usdm-aiannh/" target="_blank">📂 View the US Drought Monitor AIANNH archive listing here.</a>
 
 The goal of this repository is to aggregate AIANNH-level US Drought Monitor data in a consistent and reproducible way, using authoritative US Census AIANNH boundaries.
 
@@ -46,18 +46,54 @@ While USDM drought class boundaries are developed without regard to political bo
 
 ## 🗂 Directory Structure
 
-- `usdm-aiannh.R`: R script that processes and aggregates weekly USDM shapefiles to AIANNH boundaries.
-- `data/`: Directory containing processed AIANNH-level USDM data and US Census AIANNH boundary files.
+This repository holds the code; the data live in the public S3 bucket `s3://native-resilience` (us-west-2) under `usdm-aiannh/`, served at <https://data.native-resilience.com/usdm-aiannh/>.
+
+**Code** (this repository):
+
+- `usdm-aiannh.R`: R script that processes and aggregates weekly USDM polygons to AIANNH boundaries and publishes the archive.
+- `R/s3-archive.R`: shared S3 archive helpers (vendored from [sustainable-fsa](https://github.com/sustainable-fsa)).
 - `README.Rmd`: This README file, providing an overview and usage instructions.
-- `usdm-aiannh.parquet`: processed AIANNH-level USDM data.
-- `census-aiannh-2024.parquet`: processed AIANNH boundaries from the US CENSUS
+
+**Data** (`https://data.native-resilience.com/usdm-aiannh/`):
+
+- `data/usdm-aiannh/USDM_{YYYY-MM-DD}.parquet`: one table per weekly USDM map.
+- `data/census/`: the US Census TIGER/Line AIANNH shapefiles used.
+- `usdm-aiannh.parquet`: all weeks in a single table.
+- `census-aiannh-2025.parquet`: processed AIANNH boundaries (GeoParquet).
+- `manifest.json`: every file under `data/` with its size; `_manifest.txt`: one download URL per line.
+
+---
+
+## 💾 Accessing the Data
+
+No credentials are needed. Browse the archive at <https://data.native-resilience.com/usdm-aiannh/>, or:
+
+```bash
+aws s3 ls s3://native-resilience/usdm-aiannh/ --no-sign-request
+aws s3 sync s3://native-resilience/usdm-aiannh/data/usdm-aiannh/ ./usdm-aiannh --no-sign-request
+```
+
+```r
+# All weeks, one table
+arrow::read_parquet("https://data.native-resilience.com/usdm-aiannh/usdm-aiannh.parquet")
+
+# Or query the archive in place with DuckDB
+con <- DBI::dbConnect(duckdb::duckdb())
+DBI::dbExecute(con, "INSTALL httpfs; LOAD httpfs;")
+DBI::dbGetQuery(con, "
+  SELECT usdm_date, usdm_class, usdm_percent
+  FROM read_parquet('https://data.native-resilience.com/usdm-aiannh/usdm-aiannh.parquet')
+  WHERE Name = 'Navajo Nation'
+  ORDER BY usdm_date DESC, usdm_class
+  LIMIT 12")
+```
 
 ---
 
 ## Data Sources
 
 - **USDM Polygons**: Weekly `.parquet` files from [sustainable-fsa/usdm](https://github.com/sustainable-fsa/usdm)
-- **U.S. Census AIANNH Boundaries**: Downloaded from the U.S. Census TIGER/Line archive for 2024.
+- **U.S. Census AIANNH Boundaries**: Downloaded from the U.S. Census TIGER/Line archive for 2025.
 
 All boundaries are reprojected to EPSG:4326, geospatially validated, and saved in `.parquet` format.
 
@@ -65,35 +101,35 @@ All boundaries are reprojected to EPSG:4326, geospatially validated, and saved i
 
 The analysis pipeline is fully contained in [`usdm-aiannh.R`](usdm-aiannh.R) and proceeds as follows:
 
-1. **Install and load dependencies**:
-- Uses `pak::pak()` to ensure fresh, source-built installs of critical geospatial packages.
+1. **Pull the existing archive** from `s3://native-resilience/usdm-aiannh/`, so only new weeks are processed.
 
-2. **Download AIANNH boundary shapefiles** for 2024 directly from US Census and store in `data/census`.
+2. **Download AIANNH boundary shapefiles** for 2025 directly from US Census and store in `data/census`.
 
 3. **Convert the shapefile to (Geo)Parquet**:
 - Extract and clean up attributes
 - Encode using UTF-8, fix geometries, cast to MULTIPOLYGON, and calculate area
-- Output is saved to `census-aiannh-2024.parquet`
+- Output is saved to `census-aiannh-2025.parquet`
 
-4. **Match USDM dates with appropriate AIANNH vintage**:
-- Each USDM date is paired with the most recent AIANNH boundary file available for that year
+4. **List USDM dates**:
 - The full list of USDM dates is generated starting from `2000-01-04`, up to two days before the current date
+- All weeks are aggregated to the 2025 AIANNH boundaries
 
 5. **Download and intersect**:
 - For each weekly USDM `.parquet` file:
 - Read AIANNH and drought geometries
 - Perform spatial intersection
 - Calculate the percent of each AIANNH area affected by each drought class
-- Tabular output is saved to `data/usdm/USDM_{YYYY-MM-DD}.parquet`
+- Tabular output is saved to `data/usdm-aiannh/USDM_{YYYY-MM-DD}.parquet`
 
 6. **Output Structure**:
 Each output file is a non-spatial `.parquet` file with the following fields:
-- `GNIS`, `Name`, `NameLSAD`, `LSAD`, `CountyLSAD`
-- `Date`: Date of the USDM map (weekly, on Tuesdays)
-- `USDM Class`: One of `D0`, `D1`, `D2`, `D3`, `D4`
-- `Total Area (m^2)`: Total area of the AIANNH
-- `USDM Class Area (m^2)`: Area of the AIANNH in the USDM drought class
-- `USDM Class Area (%)`: Percent of the AIANNH in this drought class (between 0 and 100)
+- `GNIS`: GNIS identifier of the AIANNH area (`AIANNHNS`)
+- `Name`, `NameLSAD`, `LSAD`: Census name, name with legal/statistical area description, and LSAD code
+- `usdm_date`: Date of the USDM map (weekly, on Tuesdays)
+- `usdm_class`: Ordered factor, one of `None`, `D0`, `D1`, `D2`, `D3`, `D4`
+- `usdm_percent`: Fraction of the AIANNH area in this drought class (between 0 and 1)
+
+7. **Publish**: new weekly files, the combined table, the boundaries and the manifests are uploaded to S3 and verified; the README is re-rendered from the published archive.
 
 ---
 
@@ -102,18 +138,18 @@ Each output file is a non-spatial `.parquet` file with the following fields:
 Key R packages used:
 
 - `sf`
-- `terra`
 - `arrow`
 - `tidyverse`
-- `curl`
+- `furrr` / `future.mirai`
+- `processx` (with the AWS CLI v2, for publishing)
 
-The script installs all required packages using the [`pak`](https://pak.r-lib.org) package.
+In GitHub Actions the environment comes from [`mt-climate-office/actions/setup-geospatial`](https://github.com/mt-climate-office/actions).
 
 ---
 
-## 📍 Quick Start: Visualize a Weekly County USDM Map in R
+## 📍 Quick Start: Visualize a Weekly AIANNH USDM Map in R
 
-This snippet shows how to load a weekly GeoParquet file from the archive and create a simple drought classification map using `sf` and `ggplot2`.
+This snippet shows how to load the latest weekly file from the archive and create a simple drought classification map using `sf` and `ggplot2`.
 
 ```{r example, message=FALSE, fig.align = 'center', dpi=300, fig.path = './'}
 # Load required libraries
@@ -126,7 +162,7 @@ library(rmapshaper) # For innerlines function
 ## Get latest USDM data
 latest <-
   jsonlite::fromJSON(
-    "manifest.json"
+    "https://data.native-resilience.com/usdm-aiannh/manifest.json"
   )$path |>
   stringr::str_subset("parquet") |>
   max()
@@ -145,9 +181,9 @@ states <-
   sf::st_cast("POLYGON", warn = FALSE, do_split = TRUE) |>
   tigris::shift_geometry()
 
-# Get the highest (worst) drought class in each county
+# Get the highest (worst) drought class in each AIANNH area
 usdm <-
-  latest |>
+  paste0("https://data.native-resilience.com/usdm-aiannh/", latest) |>
   arrow::read_parquet() |>
   dplyr::group_by(GNIS) |>
   dplyr::filter(usdm_class == max(usdm_class)) |>
@@ -206,7 +242,7 @@ ggplot(states) +
 
 **Citation format** (suggested):
 
-> Native Resilience Project. *US Drought Monitor weekly maps aggregated to US Census American Indian/Alaska Native/Native Hawaiian Area (AIANNH) boundaries*. Data curated and archived by R. Kyle Bocinsky, Montana Climate Office. Accessed via GitHub archive, YYYY. https://native-resilience.github.io/usdm-aiannh/
+> Native Resilience Project. *US Drought Monitor weekly maps aggregated to US Census American Indian/Alaska Native/Native Hawaiian Area (AIANNH) boundaries*. Data curated and archived by R. Kyle Bocinsky, Montana Climate Office. Accessed YYYY. https://data.native-resilience.com/usdm-aiannh/
 
 **Acknowledgments**:
 
