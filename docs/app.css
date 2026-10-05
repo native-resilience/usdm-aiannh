@@ -184,3 +184,4 @@ summary { cursor: pointer; font-size: 0.78rem; color: var(--accent-line); min-he
 
 /* Info modal prose */
 .info-section p, .info-section li { font-size: 0.85rem; line-height: 1.5; }
+a.nav-btn { text-decoration: none; }
