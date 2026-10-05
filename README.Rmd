@@ -13,6 +13,8 @@ editor_options:
 
 This repository provides weekly US Drought Monitor (USDM) data aggregated to US Census American Indian/Alaska Native/Native Hawaiian Area (AIANNH) boundaries. This dataset facilitates AIANNH-level analysis of drought conditions, supporting research, policy-making, and climate resilience planning.
 
+<a href="https://native-resilience.github.io/usdm-aiannh/" target="_blank">🗺️ Open the Tribal Drought Dashboard</a>: current conditions and drought history for every AIANNH area, with reservations and off-reservation trust lands reported separately.
+
 <a href="https://data.native-resilience.com/usdm-aiannh/" target="_blank">📂 View the US Drought Monitor AIANNH archive listing here.</a>
 
 The goal of this repository is to aggregate AIANNH-level US Drought Monitor data in a consistent and reproducible way, using authoritative US Census AIANNH boundaries.
@@ -53,6 +55,7 @@ This repository holds the code; the data live in the public S3 bucket `s3://nati
 - `usdm-aiannh.R`: R script that processes and aggregates weekly USDM polygons to AIANNH boundaries and publishes the archive.
 - `R/s3-archive.R`: shared S3 archive helpers (vendored from [sustainable-fsa](https://github.com/sustainable-fsa)).
 - `README.Rmd`: This README file, providing an overview and usage instructions.
+- `docs/`: the [Tribal Drought Dashboard](https://native-resilience.github.io/usdm-aiannh/), a static page on the [mco-web-style](https://github.com/mt-climate-office/mco-web-style) kit, served by GitHub Pages.
 
 **Data** (`https://data.native-resilience.com/usdm-aiannh/`):
 
@@ -60,6 +63,7 @@ This repository holds the code; the data live in the public S3 bucket `s3://nati
 - `usdm-aiannh.parquet`: all weeks in a single table.
 - `usdm-aiannh.json`: the worst drought class per AIANNH area per week, for web maps (also kept in this repository).
 - `manifest.json`: every file under `data/` with its size; `_manifest.txt`: one download URL per line.
+- `dashboard/areas.json` and `dashboard/{GEOID}.json`: the dashboard's data — the current worst class for each area, and each component's weekly cumulative percent of area at or above each class (D0–D4 … D4), like drought.gov's county pages.
 
 The AIANNH boundaries themselves are not copied here; they live in the [`census-aiannh`](https://github.com/sustainable-fsa/census-aiannh) archive at <https://data.sustainable-fsa.com/census-aiannh/>.
 

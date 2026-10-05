@@ -354,6 +354,154 @@ jsonlite::write_json(
   auto_unbox = FALSE, digits = NA
 )
 
+## ---- Dashboard data --------------------------------------------------
+## Per-area files for the Tribal drought dashboard (docs/, GitHub Pages),
+## shaped like drought.gov's county pages: cumulative percent of area at or
+## above each class (D0–D4 … D4), on the same Tuesday grid as the web JSON,
+## rounded to 0.01 like drought.gov; null where a component is absent from
+## that week's vintage. Categorical shares are differences of adjacent
+## cumulative values, so they are not stored twice.
+##
+## dashboard/areas.json  — one entry per AIANNH entity (AIANNHCE) in the
+##                         vintage behind the latest week, components R first
+## dashboard/<GEOID>.json — one per component of those entities
+##
+## Every file is rewritten each week, so dashboard/ is mirrored to S3 and
+## invalidated wholesale; the weekly files under data/ stay immutable.
+dash_classes <- paste0("D", 0:4)
+dash_week <- as.integer(usdm_aiannh$usdm_date - web_week0) %/% 7L + 1L
+
+dash_cum <-
+  usdm_aiannh %>%
+  dplyr::mutate(week = dash_week) %>%
+  dplyr::filter(usdm_class != "None") %>%
+  dplyr::mutate(usdm_class = as.character(usdm_class)) %>%
+  tidyr::pivot_wider(id_cols = c(GEOID, week),
+                     names_from = usdm_class,
+                     values_from = usdm_percent,
+                     values_fill = 0) %>%
+  ## A class absent from the whole archive would be a missing column
+  (\(x) { x[setdiff(dash_classes, names(x))] <- 0; x })() %>%
+  dplyr::mutate(
+    D3 = D3 + D4,
+    D2 = D2 + D3,
+    D1 = D1 + D2,
+    D0 = D0 + D1,
+    dplyr::across(dplyr::all_of(dash_classes), \(x) round(100 * x, 2))
+  )
+
+## Present component-weeks with no drought rows at all (100% None) are not in
+## the pivot; they are zeros, not absences.
+dash_present <-
+  usdm_aiannh %>%
+  dplyr::transmute(GEOID, week = dash_week, census_year) %>%
+  dplyr::distinct()
+stopifnot(!anyDuplicated(dash_present[c("GEOID", "week")]))
+
+dash_cum <-
+  dash_present %>%
+  dplyr::left_join(dash_cum, by = dplyr::join_by(GEOID, week)) %>%
+  dplyr::mutate(dplyr::across(dplyr::all_of(dash_classes),
+                              \(x) tidyr::replace_na(x, 0))) %>%
+  dplyr::arrange(GEOID, week)
+
+stopifnot(
+  all(dash_cum$D0 <= 100.005),
+  all(dash_cum$D0 >= dash_cum$D1), all(dash_cum$D1 >= dash_cum$D2),
+  all(dash_cum$D2 >= dash_cum$D3), all(dash_cum$D3 >= dash_cum$D4)
+)
+
+## The entity list follows the vintage of the latest week — not simply the
+## newest TIGER release, which serves the following calendar year.
+dash_latest <- max(usdm_aiannh$usdm_date)
+dash_year <- unique(usdm_aiannh$census_year[usdm_aiannh$usdm_date == dash_latest])
+stopifnot(length(dash_year) == 1)
+
+dash_components <-
+  file.path("data-raw", "census", paste0(dash_year, "-aiannh.parquet")) %>%
+  sf::read_sf() %>%
+  dplyr::left_join(
+    web_max %>%
+      dplyr::filter(usdm_date == dash_latest) %>%
+      dplyr::select(GEOID = geoid, class),
+    by = dplyr::join_by(GEOID)
+  ) %>%
+  dplyr::arrange(AIANNHCE, COMPTYP, GEOID)
+stopifnot(!anyNA(dash_components$class))
+
+dash_areas <-
+  dash_components %>%
+  split(.$AIANNHCE) %>%
+  purrr::map(\(x){
+    bbox <- unname(round(as.numeric(sf::st_bbox(x)), 4))
+    list(
+      aiannhce = x$AIANNHCE[[1]],
+      name = x$Name[[1]],
+      bbox = bbox,
+      components = purrr::pmap(
+        list(x$GEOID, x$COMPTYP, x$NameLSAD, x$class),
+        \(geoid, comptyp, name_lsad, class)
+        list(geoid = geoid, comptyp = comptyp,
+             name_lsad = name_lsad, class = class)
+      )
+    )
+  }) %>%
+  unname()
+
+unlink("dashboard", recursive = TRUE)
+dir.create("dashboard", showWarnings = FALSE)
+
+jsonlite::write_json(
+  list(
+    schema = "usdm-aiannh-areas/1",
+    dataset = "usdm-aiannh",
+    license = "CC0-1.0",
+    classes = web_classes,
+    week0 = format(web_week0),
+    weeks = web_weeks,
+    latest = format(dash_latest),
+    census_year = dash_year,
+    areas = dash_areas
+  ),
+  file.path("dashboard", "areas.json"),
+  auto_unbox = TRUE, digits = NA
+)
+
+dash_cum %>%
+  dplyr::filter(GEOID %in% dash_components$GEOID) %>%
+  split(.$GEOID) %>%
+  purrr::iwalk(\(x, geoid){
+    ## Full Tuesday grid; NA (null) where the component is absent
+    grid <- tibble::tibble(week = seq_len(web_weeks)) %>%
+      dplyr::left_join(x, by = dplyr::join_by(week))
+    ## census_year, run-length encoded over the weeks present
+    rl <- rle(grid$census_year)
+    starts <- cumsum(c(1L, head(rl$lengths, -1)))
+    keep <- !is.na(rl$values)
+    comp <- dash_components[dash_components$GEOID == geoid, ]
+    jsonlite::write_json(
+      list(
+        schema = "usdm-aiannh-area/1",
+        geoid = geoid,
+        name_lsad = comp$NameLSAD,
+        comptyp = comp$COMPTYP,
+        week0 = format(web_week0),
+        weeks = web_weeks,
+        census_year = purrr::map2(starts[keep], rl$values[keep],
+                                  \(w, y) list(from_week = w - 1L,
+                                               census_year = y)),
+        cumulative = as.list(grid[dash_classes])
+      ),
+      file.path("dashboard", paste0(geoid, ".json")),
+      auto_unbox = TRUE, digits = NA, na = "null"
+    )
+  })
+
+stopifnot(setequal(
+  sub("[.]json$", "", setdiff(list.files("dashboard"), "areas.json")),
+  dash_components$GEOID
+))
+
 ## Create directory listing infrastructure
 generate_tree_flat <- function(
     data_dir = "data",
@@ -405,13 +553,18 @@ if (publish) {
   s3_put(s3_bucket_name, paste0(s3_prefix, "/manifest.json"), "manifest.json",
          content_type = "application/json",
          cache_control = "max-age=3600")
+  s3_push(s3_bucket_name, paste0(s3_prefix, "/dashboard"), "dashboard",
+          delete = TRUE)
   s3_verify(s3_bucket_name, paste0(s3_prefix, "/data"), "data",
+            allow_extra = character(0))
+  s3_verify(s3_bucket_name, paste0(s3_prefix, "/dashboard"), "dashboard",
             allow_extra = character(0))
   s3_write_manifest(s3_bucket_name, s3_prefix)
   cf_invalidate(paste0("/", s3_prefix, c("/usdm-aiannh.parquet",
                                          "/usdm-aiannh.json",
                                          "/manifest.json",
-                                         "/_manifest.txt")))
+                                         "/_manifest.txt",
+                                         "/dashboard/*")))
   cf_wait_manifest(
     paste0(Sys.getenv("CLOUDFRONT_BASE",
                       unset = "https://data.native-resilience.com"),

@@ -14,3 +14,4 @@ data
 usdm-aiannh.parquet
 census-aiannh-2025.parquet
 manifest.json
+dashboard/

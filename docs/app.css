@@ -1,0 +1,144 @@
+/* ============================================================================
+   Native Resilience · Tribal Drought Dashboard · app.css
+   App-specific LAYOUT only. Chrome, tokens, and component shells come from
+   mco-web-style (mco-theme.css). The one exception to "no raw hexes" is the
+   USDM data palette below (house style §6: data gets its own palette); it
+   must match CLASS_COLORS in app.js.
+   ========================================================================== */
+
+/* Full-viewport app frame — §3 (100dvh, never 100vh) */
+body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.layout { flex: 1; min-height: 0; display: flex; }
+.map-wrap { flex: 1; min-width: 0; position: relative; }
+#map { width: 100%; height: 100%; }
+
+/* Brand title is an <h1> for document outline; the kit styles .brand-title
+   as a small uppercase label, so undo the UA heading defaults only. */
+h1.brand-title { font-size: 0.65rem; margin: 0; }
+
+/* Name search — the KEYBOARD path to every polygon (§5.8). */
+.search-wrap { display: flex; align-items: center; }
+.search-wrap input[type="search"] {
+  min-height: 34px; width: 260px;
+  padding: 4px 10px;
+  background: var(--input-bg); color: var(--text-primary);
+  border: 1px solid var(--ctrl-border); border-radius: var(--radius-md);
+  font-family: inherit; font-size: 0.78rem;
+}
+
+/* ── Details column ────────────────────────────────────────────────────── */
+.details {
+  width: min(440px, 42vw); flex-shrink: 0;
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom));
+  background: var(--bg-surface); color: var(--text-primary);
+  border-right: 1px solid var(--border);
+  font-size: 0.85rem; line-height: 1.5;
+}
+.details:focus { outline: none; }
+.details a { color: var(--accent-line); }
+.details-title { font-size: 1.15rem; font-weight: 600; margin: 0; line-height: 1.25; }
+.details-title:focus { outline: none; }
+.details-sub { margin: 0.15rem 0 0.75rem; color: var(--text-muted); font-size: 0.78rem; }
+.hint { color: var(--text-secondary); }
+.details-foot { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }
+.details-foot p { font-size: 0.72rem; color: var(--text-muted); margin: 0; }
+.loading { color: var(--text-muted); }
+
+.area-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+.is-touch .area-head .mco-panel-toggle { width: 44px; height: 44px; }   /* §5.5 */
+
+/* One card per Census component (reservation / trust land) */
+.comp {
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  /* Same surface as the column: --text-muted only clears 4.5:1 on
+     --bg-surface in the dark theme, not on --bg-raised (axe, 2026-10-04). */
+  background: var(--bg-surface);
+  padding: 0.75rem; margin-bottom: 1rem;
+}
+.comp h3 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.comp-name { margin: 0; color: var(--text-muted); font-size: 0.75rem; }
+.stat { display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+.stat-value { font-size: 1.8rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-label { color: var(--text-secondary); }
+.stat-change { margin: 0.1rem 0 0.6rem; color: var(--text-muted); font-size: 0.75rem; }
+
+.bar { display: block; width: 100%; height: 14px; border-radius: var(--radius-sm);
+       border: 1px solid var(--border); }
+.class-table { width: 100%; border-collapse: collapse; margin: 0.4rem 0 0.75rem; font-size: 0.8rem; }
+.class-table th { text-align: left; font-weight: 500; padding: 0.15rem 0; }
+.class-table td { text-align: right; font-family: var(--font-mono); font-size: 0.75rem; }
+.cls-name { color: var(--text-muted); font-weight: 400; }
+
+.chart { margin: 0.5rem 0 0; }
+.chart figcaption { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem; }
+.history { display: block; width: 100%; height: auto; }
+.history .grid { stroke: var(--border); stroke-width: 0.6; }
+.history .axis { stroke: var(--text-dim); stroke-width: 0.8; }
+.history .tick { fill: var(--text-muted); font-family: var(--font-mono); font-size: 10px; }
+.chart-key { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem; }
+.chart-key > span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+details { margin-top: 0.5rem; }
+summary { cursor: pointer; font-size: 0.78rem; color: var(--accent-line); min-height: 28px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; margin-top: 0.4rem; }
+.data-table caption { text-align: left; color: var(--text-muted); padding-bottom: 0.25rem; }
+.data-table th, .data-table td { padding: 0.15rem 0.3rem; border-bottom: 1px solid var(--border); }
+.data-table td { text-align: right; font-family: var(--font-mono); }
+
+.comp-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.comp-links .nav-btn { text-decoration: none; height: auto; min-height: 34px; padding: 0.35rem 0.7rem; white-space: normal; }
+
+/* USDM swatches — the data palette (see header). Swatches are decorative
+   (aria-hidden); the class code and name beside them carry the meaning. */
+.swatch, .legend-swatch {
+  display: inline-block; width: 12px; height: 12px; flex-shrink: 0;
+  border-radius: 2px; border: 1px solid var(--border);
+  vertical-align: -1px; margin-right: 0.35rem;
+}
+[data-cls="0"] { background: #f0ead8; }
+[data-cls="1"] { background: #ffff00; }
+[data-cls="2"] { background: #fcd37f; }
+[data-cls="3"] { background: #ffaa00; }
+[data-cls="4"] { background: #e60000; }
+[data-cls="5"] { background: #730000; }
+[data-cls="na"] { background: #9aa3ad; }
+
+/* Legend — an .mco-panel docked bottom-right over the map */
+#legend-panel { right: 0.75rem; bottom: 1.75rem; }
+.legend-row { display: flex; align-items: center; gap: 0.1rem; font-size: 0.75rem; color: var(--text-secondary); padding: 0.1rem 0; }
+.legend-count { margin-left: auto; padding-left: 0.75rem; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); }
+.legend-note { margin: 0.35rem 0 0; font-size: 0.68rem; color: var(--text-muted); }
+
+/* Tooltip second line */
+.mco-tooltip .tooltip-cls { display: block; font-size: 0.72rem; color: var(--text-secondary); }
+
+/* Status line (loading / error) */
+#app-note {
+  margin: 0 0 0.75rem; padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg-raised); color: var(--text-secondary); font-size: 0.78rem;
+}
+#app-note button { margin-left: 0.5rem; }
+
+/* Compact (§3): map on top, details scroll beneath it */
+.is-compact .layout { flex-direction: column; }
+.is-compact .map-wrap { order: -1; flex: 0 0 42dvh; }
+.is-compact .details { width: auto; flex: 1; border-right: none; border-top: 1px solid var(--border); }
+
+/* Screen-reader table twin of the WebGL layer (§5.2). Also the no-WebGL
+   fallback: app.js adds .is-visible when the map can't start. */
+#sr-area-section.is-visible {
+  position: static; width: auto; height: auto; margin: 0; padding: 1rem;
+  overflow: auto; clip: auto; clip-path: none; white-space: normal;
+  flex: 1; min-height: 0;
+  color: var(--text-primary); background: var(--bg-surface);
+}
+#sr-area-section.is-visible table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+#sr-area-section.is-visible th,
+#sr-area-section.is-visible td { text-align: left; padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--border); }
+.is-fallback .map-wrap { display: none; }
+.link-btn { background: none; border: none; padding: 0; color: var(--accent-line); text-decoration: underline; cursor: pointer; font: inherit; }
+
+/* Info modal prose */
+.info-section p, .info-section li { font-size: 0.85rem; line-height: 1.5; }
