@@ -448,6 +448,101 @@ dash_areas <-
   }) %>%
   unname()
 
+## Overlapping counties. USDA's drought programs (the Livestock Forage
+## Program, Secretarial disaster designations) key on county drought, not
+## Tribal boundaries, so each component lists the Census counties it
+## overlaps, the share of the component in each, and each county's worst
+## class that week as published by usdm-counties — the same numbers, not a
+## recomputation. Counties follow usdm-counties' vintage rule (vintage V for
+## USDM year V + 1, the nearest earlier vintage between releases).
+##
+## TIGER's AIANNH and county layers share one topology, so the shares sum to
+## 1 per component and even small overlaps are real (Navajo's Ramah and
+## To'hajiilee chapters reach Cibola and Bernalillo counties). Only overlaps
+## under 0.1% of the component and 1 km² are dropped. The intersection runs
+## in GEOS (s2's is minutes here, GEOS seconds); areas are s2, like Area.
+CENSUS_COUNTIES <-
+  Sys.getenv("CENSUS_COUNTIES_URL",
+             unset = "https://data.sustainable-fsa.com/census-counties")
+USDM_COUNTIES <-
+  Sys.getenv("USDM_COUNTIES_URL",
+             unset = "https://data.sustainable-fsa.com/usdm-counties")
+
+dash_county_year <-
+  c(2000, 2009, 2010, 2011:(lubridate::year(dash_latest) - 1)) %>%
+  rev() %>%
+  purrr::detect(\(x) url_exists(file.path(CENSUS_COUNTIES, "data", "parquet",
+                                          paste0(x, "-counties.parquet"))))
+stopifnot(!is.null(dash_county_year))
+
+dash_counties_file <-
+  file.path("data-raw", "census", paste0(dash_county_year, "-counties.parquet"))
+if (!file.exists(dash_counties_file))
+  file.path(CENSUS_COUNTIES, "data", "parquet",
+            paste0(dash_county_year, "-counties.parquet")) %>%
+  sf::read_sf() %>%
+  dplyr::select(STATEFP, COUNTYFP, CountyLSAD) %>%
+  sf::write_sf(dash_counties_file,
+               driver = "Parquet",
+               layer_options = c("COMPRESSION=ZSTD",
+                                 "COMPRESSION_LEVEL=13"),
+               delete_dsn = TRUE)
+
+sf::sf_use_s2(FALSE)
+dash_overlap <-
+  suppressMessages(suppressWarnings(
+    sf::st_intersection(dash_components[c("GEOID", "Area")],
+                        sf::read_sf(dash_counties_file))
+  ))
+sf::sf_use_s2(TRUE)
+dash_overlap <-
+  dash_overlap[sf::st_dimension(dash_overlap) == 2, ] %>%
+  dplyr::mutate(km2 = units::drop_units(sf::st_area(geometry)) / 1e6,
+                share = 1e6 * km2 / Area) %>%
+  sf::st_drop_geometry() %>%
+  dplyr::filter(share >= 0.001 | km2 >= 1)
+
+## Each county's worst class every week, from usdm-counties' web JSON
+## (usdm-max-class/1) — the same numbers that archive publishes, on the same
+## Tuesday grid, so the dashboard can show any week. A county that archive
+## does not carry (a vintage mismatch) keeps an all-'.' series and shows as
+## "no record"; a series off by a week (either repo can finish first after
+## a usdm release) is padded or trimmed to this grid.
+dash_county_web <- jsonlite::read_json(
+  file.path(USDM_COUNTIES, "usdm-counties.json"), simplifyVector = TRUE)
+stopifnot(dash_county_web$schema == "usdm-max-class/1",
+          dash_county_web$week0 == format(web_week0))
+
+dash_county_series <-
+  tibble::tibble(
+    fips = dash_county_web$counties,
+    state_name = dash_county_web$state_names,
+    series = stringr::str_pad(substr(dash_county_web$series, 1, web_weeks),
+                              web_weeks, side = "right", pad = ".")
+  )
+dash_county_date <-
+  web_week0 + 7L * (dash_county_web$weeks - 1L)
+
+## Postal abbreviations for the county labels ("Apache County, AZ")
+dash_state_abb <-
+  c(magrittr::set_names(state.abb, state.name),
+    "District of Columbia" = "DC", "Puerto Rico" = "PR")
+
+dash_overlap <-
+  dash_overlap %>%
+  dplyr::mutate(fips = paste0(STATEFP, COUNTYFP)) %>%
+  dplyr::left_join(dash_county_series, by = dplyr::join_by(fips)) %>%
+  dplyr::mutate(
+    State = dplyr::coalesce(dash_state_abb[state_name], state_name, STATEFP),
+    series = dplyr::coalesce(series, strrep(".", web_weeks))
+  ) %>%
+  dplyr::arrange(GEOID, dplyr::desc(share))
+
+## Every component lies in at least one county
+stopifnot(setequal(dash_overlap$GEOID, dash_components$GEOID),
+          all(nchar(dash_overlap$series) == web_weeks))
+
+
 unlink("dashboard", recursive = TRUE)
 dir.create("dashboard", showWarnings = FALSE)
 
@@ -461,6 +556,8 @@ jsonlite::write_json(
     weeks = web_weeks,
     latest = format(dash_latest),
     census_year = dash_year,
+    county_date = format(dash_county_date),
+    county_census_year = dash_county_year,
     areas = dash_areas
   ),
   file.path("dashboard", "areas.json"),
@@ -479,6 +576,7 @@ dash_cum %>%
     starts <- cumsum(c(1L, head(rl$lengths, -1)))
     keep <- !is.na(rl$values)
     comp <- dash_components[dash_components$GEOID == geoid, ]
+    cty <- dash_overlap[dash_overlap$GEOID == geoid, ]
     jsonlite::write_json(
       list(
         schema = "usdm-aiannh-area/1",
@@ -490,7 +588,17 @@ dash_cum %>%
         census_year = purrr::map2(starts[keep], rl$values[keep],
                                   \(w, y) list(from_week = w - 1L,
                                                census_year = y)),
-        cumulative = as.list(grid[dash_classes])
+        cumulative = as.list(grid[dash_classes]),
+        ## Overlapping counties, largest share first: share is the percent
+        ## of this component in the county; series is the county's own
+        ## worst class each week, encoded as in usdm-max-class/1.
+        counties = purrr::pmap(
+          list(cty$fips, cty$CountyLSAD, cty$State,
+               round(100 * cty$share, 1), cty$series),
+          \(fips, name, state, share, series)
+          list(fips = fips, name = name, state = state, share = share,
+               series = series)
+        )
       ),
       file.path("dashboard", paste0(geoid, ".json")),
       auto_unbox = TRUE, digits = NA, na = "null"
@@ -498,9 +606,34 @@ dash_cum %>%
   })
 
 stopifnot(setequal(
-  sub("[.]json$", "", setdiff(list.files("dashboard"), "areas.json")),
+  sub("[.]json$", "", setdiff(list.files("dashboard", pattern = "[.]json$"),
+                              "areas.json")),
   dash_components$GEOID
 ))
+
+## The fade mask for the dashboard's "USDM map" view: everything outside the
+## Tribal areas, drawn over the full-color weekly USDM (data-tiles'
+## USDM_<date>-geo.topojson) so drought reads at full strength only inside
+## Tribal boundaries. MapLibre cannot mask a layer by another, so the
+## complement is its own polygon, and one static mask serves every week.
+## It is cut from the boundaries the map draws (census-aiannh's simplified
+## newest vintage), so the fade and the outlines coincide at every zoom.
+## Planar GEOS: a world rectangle is not a valid s2 polygon.
+dash_map_aiannh <-
+  file.path(CENSUS_AIANNH, "census-aiannh_simple.topojson") %>%
+  sf::read_sf() %>%
+  sf::st_set_crs("EPSG:4326")
+
+sf::sf_use_s2(FALSE)
+sf::st_bbox(c(xmin = -180, ymin = -85, xmax = 180, ymax = 85),
+            crs = sf::st_crs(4326)) %>%
+  sf::st_as_sfc() %>%
+  sf::st_difference(sf::st_union(sf::st_make_valid(dash_map_aiannh))) %>%
+  sf::st_sf(geometry = .) %>%
+  sf::write_sf(file.path("dashboard", "mask.geojson"),
+               layer_options = "COORDINATE_PRECISION=5",
+               delete_dsn = TRUE)
+sf::sf_use_s2(TRUE)
 
 ## Create directory listing infrastructure
 generate_tree_flat <- function(

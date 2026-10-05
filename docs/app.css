@@ -26,6 +26,35 @@ h1.brand-title { font-size: 0.65rem; margin: 0; }
   font-family: inherit; font-size: 0.78rem;
 }
 
+/* USDM week stepper — the Mesonet photos pattern: a native date input with
+   ▲/▼ stacked beside it (next above previous). --ctrl-border for the edge,
+   --accent-line on hover/focus (both ≥3:1 — WCAG 1.4.11). */
+.date-stepper { display: flex; align-items: center; gap: 4px; }
+input[type="date"] {
+  background: none; color: var(--text-primary);
+  border: 1px solid var(--ctrl-border); border-radius: var(--radius-md);
+  padding: 0 0.55rem; font-size: 0.78rem; font-family: inherit;
+  cursor: pointer; height: 34px; line-height: 34px;
+  -webkit-appearance: none; appearance: none;
+  transition: var(--transition);
+}
+/* The UA calendar glyph ships dark; the kit's icon filter inverts it in
+   dark and high-contrast. */
+input[type="date"]::-webkit-calendar-picker-indicator { filter: var(--ctrl-icon-filter, none); cursor: pointer; }
+input[type="date"]:hover, input[type="date"]:focus { background: var(--accent-hover); border-color: var(--accent-line); }
+.date-step-btns { display: flex; flex-direction: column-reverse; gap: 2px; }
+.nav-btn.date-step {
+  padding: 0 4px; min-height: 0; height: 15px; min-width: 20px;
+  border-radius: var(--radius-sm); justify-content: center;
+}
+/* WCAG 2.5.5: two stacked 15px buttons are untappable — lay them out as a
+   pair of 40px targets (previous left, next right) on touch. */
+@media (hover: none) {
+  .date-step-btns { flex-direction: row; gap: 4px; }
+  .nav-btn.date-step { min-width: 40px; min-height: 40px; height: 40px; border-radius: var(--radius-md); }
+}
+.controls { gap: 0.75rem; }
+
 /* ── Details column ────────────────────────────────────────────────────── */
 .details {
   width: min(440px, 42vw); flex-shrink: 0;
@@ -70,11 +99,24 @@ h1.brand-title { font-size: 0.65rem; margin: 0; }
 .class-table td { text-align: right; font-family: var(--font-mono); font-size: 0.75rem; }
 .cls-name { color: var(--text-muted); font-weight: 400; }
 
+.counties { margin: 0 0 0.75rem; }
+.counties h4 { margin: 0 0 0.25rem; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+.county-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+.county-table th, .county-table td { padding: 0.15rem 0.3rem 0.15rem 0; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.county-table thead th { font-weight: 500; color: var(--text-muted); font-size: 0.7rem; }
+.county-table tbody th { font-weight: 500; }
+.county-table td:nth-child(2) { font-family: var(--font-mono); text-align: right; padding-right: 0.6rem; white-space: nowrap; }
+.county-note { margin: 0.3rem 0 0; font-size: 0.7rem; color: var(--text-muted); }
+
+/* Map view toggle, top of the legend panel */
+.view-btns { margin-bottom: 0.5rem; }
+
 .chart { margin: 0.5rem 0 0; }
 .chart figcaption { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem; }
 .history { display: block; width: 100%; height: auto; }
 .history .grid { stroke: var(--border); stroke-width: 0.6; }
 .history .axis { stroke: var(--text-dim); stroke-width: 0.8; }
+.history .now { stroke: var(--text-primary); stroke-width: 1; stroke-dasharray: 3 2; }
 .history .tick { fill: var(--text-muted); font-family: var(--font-mono); font-size: 10px; }
 .chart-key { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem; }
 .chart-key > span { display: inline-flex; align-items: center; gap: 0.3rem; }

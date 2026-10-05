@@ -91,6 +91,24 @@
   </div>
 
   <div class="controls">
+    <div class="date-stepper">
+      <label class="control-label" for="date-input">USDM week</label>
+      <input type="date" id="date-input" required>
+      <div class="date-step-btns">
+        <button type="button" class="nav-btn date-step" id="btn-date-prev" aria-label="Previous week" disabled>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+               stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <button type="button" class="nav-btn date-step" id="btn-date-next" aria-label="Next week" disabled>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+               stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="18 15 12 9 6 15"/>
+          </svg>
+        </button>
+      </div>
+    </div>
     <div class="search-wrap mco-search-collapse" id="search-wrap" role="search">
       <label class="sr-only" for="area-search">Find a Tribal area by name</label>
       <input type="search" id="area-search" list="area-names"
@@ -153,16 +171,22 @@
     <div id="map" role="application"
          aria-label="Map of American Indian, Alaska Native, and Native Hawaiian areas colored by their most severe current drought class"></div>
 
-    <div class="mco-panel" id="legend-panel">
+    <section class="mco-panel" id="legend-panel" aria-labelledby="legend-title">
       <div class="mco-panel-head">
-        <span class="mco-panel-title">Most severe class</span>
+        <span class="mco-panel-title" id="legend-title">US Drought Monitor</span>
         <button type="button" class="mco-panel-toggle" id="legend-toggle"
                 aria-controls="legend-body" aria-label="Collapse legend">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
         </button>
       </div>
-      <div class="mco-panel-body" id="legend-body"></div>
-    </div>
+      <div class="mco-panel-body" id="legend-body">
+        <div class="seg-btns view-btns" role="group" aria-label="Map shows">
+          <button type="button" class="nav-btn seg-btn" data-view="usdm" aria-pressed="true">USDM map</button>
+          <button type="button" class="nav-btn seg-btn" data-view="worst" aria-pressed="false">Most severe by area</button>
+        </div>
+        <div id="legend-rows"></div>
+      </div>
+    </section>
   </div>
 
   <!-- Screen-reader table twin of the WebGL layer (house style §5.2). Doubles
@@ -203,7 +227,12 @@
         <li><strong>Area in drought</strong> is the share of land in D1 or worse, as on drought.gov.</li>
         <li>The history chart shows the share at or above each class (D0–D4, D1–D4, …), drawn
             over one another, so the top of each color is that cumulative share.</li>
-        <li>The map colors each area by the most severe class covering any part of it.</li>
+        <li>The map shows the week’s US Drought Monitor map, in full color inside Tribal areas and
+            faded outside them. Switch to <strong>Most severe by area</strong> to color each area by
+            the most severe class covering any part of it — easier to scan at national scale.</li>
+        <li><strong>Overlapping counties</strong> lists the counties each area lies in, with each
+            county’s most severe class that week. USDA drought programs, such as the Livestock Forage
+            Program and disaster designations, are triggered by county drought levels.</li>
         <li>Percentages are of the whole Census boundary, including water, which the coastline-clipped
             USDM map counts as no drought.</li>
       </ul>
@@ -223,6 +252,8 @@
          Boundaries: US Census Bureau TIGER/Line American Indian/Alaska Native/Native Hawaiian Areas,
          using each year's boundaries for that year's maps
          (<a href="https://github.com/sustainable-fsa/census-aiannh" target="_blank" rel="noopener noreferrer">census-aiannh</a>).
+         County drought:
+         <a href="https://github.com/sustainable-fsa/usdm-counties" target="_blank" rel="noopener noreferrer">usdm-counties</a>.
          Aggregation and data: <a href="https://github.com/native-resilience/usdm-aiannh" target="_blank" rel="noopener noreferrer">usdm-aiannh</a>.
          Basemap © <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>,
          © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
