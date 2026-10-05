@@ -276,15 +276,28 @@
       `<tbody>${rows}</tbody></table>`;
   }
 
+  // RFC 4180 field: names can hold commas and apostrophes.
+  function csvField(v) {
+    const t = v == null ? '' : String(v);
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  }
+
+  // Readable download name, like the projections zips: "Coeur d'Alene
+  // Reservation" -> "Coeur_d_Alene_Reservation".
+  function fileStem(name) {
+    return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9-]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
   function csvFor(comp, rec) {
-    const lines = ['date,geoid,census_year,' + CUM.map((k) => `${k}_D4_percent`).join(',')];
+    const lines = ['name,geoid,date,census_year,' + CUM.map((k) => k === 'D4' ? 'D4_percent' : `${k}_D4_percent`).join(',')];
     const cy = rec.census_year;
     let ci = 0;
     for (let j = 0; j < rec.weeks; j++) {
       if (rec.cumulative.D0[j] == null) continue;
       while (ci + 1 < cy.length && cy[ci + 1].from_week <= j) ci++;
-      lines.push([isoDate(weekDate(j)), comp.geoid, cy[ci].census_year,
-        ...CUM.map((k) => rec.cumulative[k][j])].join(','));
+      lines.push([comp.name_lsad, comp.geoid, isoDate(weekDate(j)), cy[ci].census_year,
+        ...CUM.map((k) => rec.cumulative[k][j])].map(csvField).join(','));
     }
     return lines.join('\n') + '\n';
   }
@@ -306,7 +319,7 @@
       `<tr><th scope="row"><span class="swatch" data-cls="${i}" aria-hidden="true"></span>` +
       `${c === 'None' ? 'None' : c} <span class="cls-name">${esc(CLASS_NAMES[i])}</span></th>` +
       `<td>${pct(cat[i])}</td></tr>`).join('');
-    const csvName = `usdm-${comp.geoid}-${isoDate(weekDate(L))}.csv`;
+    const csvName = `${fileStem(comp.name_lsad)}_USDM_${isoDate(weekDate(L))}.csv`;
     return `<article class="comp" aria-labelledby="${id}-h">
       <h3 id="${id}-h">${esc(heading)}</h3>
       ${multi ? `<p class="comp-name">${esc(comp.name_lsad)}</p>` : ''}
