@@ -688,6 +688,13 @@ if (publish) {
          cache_control = "max-age=3600")
   s3_push(s3_bucket_name, paste0(s3_prefix, "/dashboard"), "dashboard",
           delete = TRUE)
+  ## sync types .geojson as binary/octet-stream, which CloudFront will not
+  ## compress (nor application/geo+json); application/json it will, 1.1 MB
+  ## to ~0.3 MB over the wire.
+  s3_put(s3_bucket_name, paste0(s3_prefix, "/dashboard/mask.geojson"),
+         file.path("dashboard", "mask.geojson"),
+         content_type = "application/json",
+         cache_control = "max-age=3600")
   s3_verify(s3_bucket_name, paste0(s3_prefix, "/data"), "data",
             allow_extra = character(0))
   s3_verify(s3_bucket_name, paste0(s3_prefix, "/dashboard"), "dashboard",
