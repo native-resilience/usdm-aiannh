@@ -28,7 +28,7 @@
   const DATA = LOCAL ? '../dashboard' : ARCHIVE + '/dashboard';
   const BOUNDARIES =
     'https://data.sustainable-fsa.com/census-aiannh/census-aiannh_simple.topojson';
-  const D3DROUGHT = 'https://d3drought.org/#spi/30d/rolling-30/';
+  const D3DROUGHT = 'https://d3drought.org/#spi/30d/rolling-30/AIANNH:';
 
   // Full extent of the areas: the Aleutians to Maine, Hawaiʻi to the North Slope.
   const BOUNDS = [[-174.24, 18.91], [-67.04, 71.34]];
