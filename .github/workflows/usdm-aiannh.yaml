@@ -1,7 +1,9 @@
 # Archive-update workflow, modeled on sustainable-fsa/usdm-counties (S3 archive
 # + conda-forge geospatial setup). Data publish to s3://native-resilience/
 # usdm-aiannh/ (https://data.native-resilience.com/usdm-aiannh/); only the
-# rendered README comes back to git.
+# rendered README and the web JSON come back to git. Boundaries are read from
+# sustainable-fsa/census-aiannh. The sustainable-fsa/usdm workflow dispatches
+# this one when a new week lands; the cron below is the fallback.
 name: update
 run-name: Update the usdm-aiannh archive → S3
 
@@ -21,7 +23,7 @@ on:
 
 permissions:
   id-token: write
-  contents: write  # commit-back of rendered README
+  contents: write  # commit-back of rendered README and web JSON
 
 concurrency:
   group: s3-archive-${{ github.repository }}
@@ -112,18 +114,21 @@ jobs:
       - name: Update archive
         run: Rscript usdm-aiannh.R
 
-      # Commit the freshly rendered README (and only it) back to git. No-op
-      # runs skip the commit; PNG byte-noise alone never triggers one.
-      - name: Commit refreshed README
+      # Commit the freshly rendered README and the web JSON (and only
+      # those) back to git. Both are deterministic functions of the data, so
+      # no-op runs skip the commit; PNG byte-noise alone never triggers one.
+      # `git status --porcelain` rather than `git diff` so a still-untracked
+      # JSON is committed too.
+      - name: Commit refreshed README and web JSON
         run: |
-          if git diff --quiet -- README.md; then
-            echo "README unchanged; skipping commit."
+          if [ -z "$(git status --porcelain -- README.md usdm-aiannh.json)" ]; then
+            echo "README and web JSON unchanged; skipping commit."
             exit 0
           fi
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md example-1.png
-          git commit -m 'Weekly README render'
+          git add README.md example-1.png usdm-aiannh.json
+          git commit -m 'Weekly README render and web JSON'
           if ! git pull --rebase --autostash origin main; then
             git rebase --abort || true
             echo "::notice::README render superseded by a concurrent run; skipping commit."

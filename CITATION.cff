@@ -1,0 +1,21 @@
+# Citation metadata for this repository (Citation File Format 1.2.0).
+# Modeled on sustainable-fsa/usdm-counties; the same citation appears in
+# human-readable form in README.md.
+cff-version: 1.2.0
+message: "If you use this dataset, please cite it using these metadata."
+type: dataset
+title: "US Drought Monitor Weekly Maps Aggregated to US Census American Indian/Alaska Native/Native Hawaiian Area (AIANNH) Boundaries (Native Resilience Archive)"
+authors:
+  - name: "National Drought Mitigation Center, USDA, and NOAA"
+  - family-names: Bocinsky
+    given-names: R. Kyle
+    affiliation: "Montana Climate Office, University of Montana"
+date-released: 2026-10-04
+repository-code: "https://github.com/native-resilience/usdm-aiannh"
+url: "https://data.native-resilience.com/usdm-aiannh/"
+keywords:
+  - drought
+  - US Drought Monitor
+  - American Indian and Alaska Native areas
+  - tribal lands
+  - Native Resilience

@@ -6,3 +6,11 @@
 .httr-oauth
 .DS_Store
 .quarto
+data-raw/
+
+# S3-hosted data (archive of record:
+# https://data.native-resilience.com/usdm-aiannh/)
+data
+usdm-aiannh.parquet
+census-aiannh-2025.parquet
+manifest.json
