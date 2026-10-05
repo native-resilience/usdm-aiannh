@@ -27,11 +27,9 @@
 
   /* ── Constants ─────────────────────────────────────────────────────────── */
 
-  // The archive is served by CloudFront E2O1CP3LOBQEN8. Switch this to
-  // https://data.native-resilience.com/usdm-aiannh once that hostname has
-  // its DNS record and CloudFront alias. Local development (serving the repo
-  // root) reads the freshly built ../dashboard/ instead.
-  const ARCHIVE = 'https://d1kohdhusg35um.cloudfront.net/usdm-aiannh';
+  // The archive (CloudFront E2O1CP3LOBQEN8). Local development (serving the
+  // repo root) reads the freshly built ../dashboard/ instead.
+  const ARCHIVE = 'https://data.native-resilience.com/usdm-aiannh';
   const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
   const DATA = LOCAL ? '../dashboard' : ARCHIVE + '/dashboard';
   const BOUNDARIES =
